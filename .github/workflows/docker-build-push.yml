@@ -57,14 +57,14 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ github.run_created_at }}
 
-      # - name: Ensure tags are not empty
-      #   id: ensure_tags
-      #   run: |
-      #     echo "Tags: ${{ steps.metadata.outputs.tags }}"
-      #     if [ -z "${{ steps.metadata.outputs.tags }}" ]; then
-      #       echo "No tags generated, setting fallback tag"
-      #       echo "::set-output name=tags::latest"
-      #     fi
+      - name: Ensure tags are not empty
+        id: ensure_tags
+        run: |
+          echo "Tags: ${{ steps.metadata.outputs.tags }}"
+          if [ -z "${{ steps.metadata.outputs.tags }}" ]; then
+            echo "No tags generated, setting fallback tag"
+            echo "::set-output name=tags::latest"
+          fi
 
       - name: Build Docker Image
         uses: docker/build-push-action@v5
