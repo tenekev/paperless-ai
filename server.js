@@ -11,6 +11,9 @@ const setupRoutes = require('./routes/setup');
 
 const app = express();
 
+// running task true or false
+let runningTask = false;
+
 // EJS setup
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -49,7 +52,8 @@ const initializeDataDirectory = async () => {
 };
 
 // Main scanning function
-async function scanDocuments() {
+async function scanInital() {
+  config.CONFIGURED = false;
   try {
     const isConfigured = await setupService.isConfigured();
     if (!isConfigured) {
@@ -57,8 +61,77 @@ async function scanDocuments() {
       return;
     }
 
+    config.CONFIGURED = true;
+
+
     const existingTags = await paperlessService.getTags();
-    const documents = await paperlessService.getDocuments();
+    const documents = await paperlessService.getAllDocuments();
+    
+    for (const doc of documents) {
+      const isProcessed = await documentModel.isDocumentProcessed(doc.id);
+      
+      if (!isProcessed) {
+        console.log(`Processing new document: ${doc.title}`);
+        
+        const content = await paperlessService.getDocumentContent(doc.id);
+        const aiService = AIServiceFactory.getService();
+        const analysis = await aiService.analyzeDocument(content, existingTags, doc.id);
+        if (analysis.error) {
+          console.error('Document analysis failed:', result.error);
+          // Handle error appropriately
+          return;
+        }
+        const { tagIds, errors } = await paperlessService.processTags(analysis.document.tags);
+        
+        if (errors.length > 0) {
+          console.warn('Some tags could not be processed:', errors);
+        }
+
+        let updateData = { 
+          tags: tagIds,
+          title: analysis.document.title || doc.title,
+          created: analysis.document.document_date || doc.created,
+        };
+        
+        if (analysis.document.correspondent) {
+          try {
+            const correspondent = await paperlessService.getOrCreateCorrespondent(analysis.document.correspondent);
+            if (correspondent) {
+              updateData.correspondent = correspondent.id;
+            }
+          } catch (error) {
+            console.error(`Error processing correspondent "${analysis.document.correspondent}":`, error.message);
+          }
+        }
+
+        if (analysis.document.language) {
+          updateData.language = analysis.document.language;
+        }
+
+        try {
+          await paperlessService.updateDocument(doc.id, updateData);
+          await documentModel.addProcessedDocument(doc.id, updateData.title);
+          await documentModel.addOpenAIMetrics(doc.id, analysis.metrics.promptTokens, analysis.metrics.completionTokens, analysis.metrics.totalTokens);
+        } catch (error) {
+          console.error(`Error processing document: ${error}`);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error during document scan:', error);
+  }
+}
+
+// Main scanning function
+async function scanDocuments() {
+  if (runningTask) {
+    console.log('Task already running');
+    return;
+  }
+  try {
+    runningTask = true;
+    const existingTags = await paperlessService.getTags();
+    const documents = await paperlessService.getAllDocuments();
     
     for (const doc of documents) {
       const isProcessed = await documentModel.isDocumentProcessed(doc.id);
@@ -108,6 +181,8 @@ async function scanDocuments() {
   } catch (error) {
     console.error('Error during document scan:', error);
   }
+  runningTask = false;
+  console.log('[INFO] Task completed');
 }
 
 // Setup route handling
@@ -116,13 +191,14 @@ app.use('/', setupRoutes);
 // Main route with setup check
 app.get('/', async (req, res) => {
   try {
-    const isConfigured = await setupService.isConfigured();
-    if (!isConfigured) {
-      return res.redirect('/setup');
-    }
+    // const isConfigured = await setupService.isConfigured();
+    // if (!isConfigured) {
+    //   return res.redirect('/setup');
+    // }
 
-    const documents = await paperlessService.getDocuments();
-    res.render('index', { documents });
+    // const documents = await paperlessService.getDocuments();
+    // res.render('index', { documents });
+    res.redirect('/dashboard');
   } catch (error) {
     console.error('Error fetching documents:', error);
     res.status(500).send('Error fetching documents');
@@ -166,20 +242,30 @@ app.use((err, req, res, next) => {
 });
 
 // Schedule periodic scanning
-const startScanning = () => {
-  setupService.isConfigured().then(isConfigured => {
-    if (isConfigured) {
-      console.log('Running initial scan...');
-      scanDocuments();
-    } else {
-      console.log('Setup not completed. Visit /setup to complete setup.');
+const startScanning = async () => {
+  try {
+    const isConfigured = await setupService.isConfigured();
+    if (!isConfigured) {
+      console.log('Setup not completed. Visit http://your-ip-or-host.com:3000/setup to complete setup.');
+      return;
     }
-  });
 
-  // Schedule regular scans
-  cron.schedule(config.scanInterval, () => {
-    scanDocuments();
-  });
+    // Log the configured scan interval
+    console.log('Configured scan interval:', config.scanInterval);
+
+    // Initial scan
+    console.log(`Starting initial scan at ${new Date().toISOString()}`);
+    await scanInital();
+
+    // Schedule regular scans
+    cron.schedule(config.scanInterval, async () => {
+      console.log(`Starting scheduled scan at ${new Date().toISOString()}`);
+      await scanDocuments();
+    });
+
+  } catch (error) {
+    console.error('Error in startScanning:', error);
+  }
 };
 
 // Graceful shutdown

@@ -2,10 +2,12 @@ const fs = require('fs').promises;
 const path = require('path');
 const axios = require('axios');
 const { OpenAI } = require('openai');
+const config = require('../config/config');
 
 class SetupService {
   constructor() {
     this.envPath = path.join(process.cwd(), 'data', '.env');
+    this.configured = null; // Variable to store the configuration status
   }
 
   async loadConfig() {
@@ -40,16 +42,23 @@ class SetupService {
   }
 
   async validateOpenAIConfig(apiKey) {
-    try {
-      const openai = new OpenAI({ apiKey });
-      const response = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [{ role: "user", content: "Test" }],
-      });
-      return response.choices && response.choices.length > 0;
-    } catch (error) {
-      console.error('OpenAI validation error:', error.message);
-      return false;
+    if (config.CONFIGURED === false) {
+      try {
+        const openai = new OpenAI({ apiKey });
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: "Test" }],
+        });
+        const now = new Date();
+        const timestamp = now.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
+        console.log(`[DEBUG] [${timestamp}] OpenAI request sent`);
+        return response.choices && response.choices.length > 0;
+      } catch (error) {
+        console.error('OpenAI validation error:', error.message);
+        return false;
+      }
+    }else{
+      return true;
     }
   }
 
@@ -141,6 +150,10 @@ class SetupService {
   }
 
   async isConfigured() {
+    if (this.configured !== null) {
+      return this.configured;
+    }
+
     try {
       // Check data directory and .env file
       const dataDir = path.dirname(this.envPath);
@@ -155,21 +168,28 @@ class SetupService {
       try {
         await fs.access(this.envPath, fs.constants.F_OK);
       } catch (err) {
+        this.configured = false;
         return false;
       }
 
       const config = await this.loadConfig();
-      if (!config) return false;
-      
+      if (!config) {
+        this.configured = false;
+        return false;
+      }
+
       try {
         await this.validateConfig(config);
+        this.configured = true;
         return true;
       } catch (error) {
         console.error('Configuration validation failed:', error.message);
+        this.configured = false;
         return false;
       }
     } catch (error) {
       console.error('Error checking configuration:', error.message);
+      this.configured = false;
       return false;
     }
   }

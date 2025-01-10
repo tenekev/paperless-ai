@@ -4,7 +4,37 @@
 
 # Paperless-AI
 
-An automated document analyzer for Paperless-ngx using OpenAI API and Ollama (Mistral, llama, phi 3, gemma 2) to automatically analyze and tag your documents.
+An automated document analyzer for Paperless-ngx using OpenAI API and Ollama (Mistral, llama, phi 3, gemma 2) to automatically analyze and tag your documents. \
+It features: Automode, Manual Mode, Ollama and OpenAI, a Chat function to query your documents with AI, a modern and intuitive Webinterface. 
+
+
+### Disclaimer:
+paperless-ai makes changes to the documents in your productive paperlessNGX instance that cannot be easily undone.
+Do the configuration carefully and think twice. 
+Please test the results beforehand in a separate development environment and be sure to back up your documents and metadata beforehand. 
+
+
+
+## We exploded! 💥
+💚 Thank you for all your support, bug submit, feature requests 💚
+<picture>
+  <source
+    media="(prefers-color-scheme: dark)"
+    srcset="
+      https://api.star-history.com/svg?repos=clusterzx/paperless-ai&type=Date&theme=dark
+    "
+  />
+  <source
+    media="(prefers-color-scheme: light)"
+    srcset="
+      https://api.star-history.com/svg?repos=clusterzx/paperless-ai&type=Date
+    "
+  />
+  <img
+    alt="Star History Chart"
+    src="https://api.star-history.com/svg?repos=clusterzx/paperless-ai&type=Date"
+  />
+</picture>
 
 ## Features
 
@@ -17,6 +47,7 @@ An automated document analyzer for Paperless-ngx using OpenAI API and Ollama (Mi
     - THIS WILL DISABLE THE PROMPT DIALOG!
   - ✔️ Choose if you want to assign a special tag (you name it) to documents that were processed by AI. 🆕
 - 🔨 Manual mode to do analysing by hand with help of AI. 🆕
+##### - 💬 NEW! Document Chat function (only OpenAI right now). 🆕
 - 🚀 Easy setup through web interface
 - 📊 Document processing dashboard
 - 🔄 Automatic restart and health monitoring
@@ -32,40 +63,11 @@ An automated document analyzer for Paperless-ngx using OpenAI API and Ollama (Mi
 
 ## Installation
 
-### You can use Docker Pull for easy setup:
-```bash
-docker pull clusterzx/paperless-ai
-```
-```bash
-docker run -d -p 3000:3000 -v /data:/app/data clusterzx/paperless-ai
-```
-
-### Or you can do it manually by yourself:
-
-1. Clone the repository:
-```bash
-git clone https://github.com/clusterzx/paperless-ai.git
-cd paperless-ai
-npm install
-```
-
-2. Start the container:
-```bash
-docker-compose up -d
-```
-
-3. Open your browser and navigate to:
-```
-http://localhost:3000
-```
-
-4. Complete the setup by providing:
-- Paperless-ngx API URL
-- Paperless-ngx API Token
-- Ollama API Data
-    OR
-- OpenAI API Key
-- Scan interval (default: every 30 minutes)
+Visit the Wiki for installation:\
+[Click here for Installation](https://github.com/clusterzx/paperless-ai/wiki/Installation)
+-------------------------------------------
+\
+\
 
 ## How it Works
 
@@ -88,8 +90,8 @@ http://localhost:3000
 You can now manually analyze your files by hand with the help of AI in a beautiful Webinterface.
 Reachable via the ```/manual``` endpoint from the webinterface.
 
-Preview:
-![Preview Image](./preview.png)
+## NEW Dashboard:
+![Dashboard Image](./dashboard.png)
 
 ## Configuration Options
 
