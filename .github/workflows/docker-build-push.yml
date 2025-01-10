@@ -45,8 +45,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ env.GITHUB_USERNAME && env.GITHUB_USERNAME || 'ignored' }}/${{ matrix.image }}
-            ${{ env.DOCKER_USERNAME }}/${{ matrix.image }}
+            ${{ env.GITHUB_USERNAME }}/${{ matrix.image }}
+            ${{ env.DOCKER_USERNAME && env.DOCKER_USERNAME || env.GITHUB_USERNAME }}/${{ matrix.image }}
           tags: |
             type=schedule,pattern=nightly
             type=semver,pattern={{version}},enable=${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
