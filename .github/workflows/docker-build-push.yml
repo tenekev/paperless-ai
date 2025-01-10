@@ -40,11 +40,13 @@ jobs:
       - name: Generate Metadata
         env:
           GITHUB_USERNAME: "ghcr.io/${{ github.repository_owner }}"
+          DOCKER_USERNAME: "${{ secrets.DOCKER_USERNAME }}"
         id: metadata
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ matrix.registry == 'dockerhub' && secrets.DOCKER_USERNAME || env.GITHUB_USERNAME }}/${{ matrix.image }}
+            ${{ env.GITHUB_USERNAME }}/${{ matrix.image }}
+            ${{ env.DOCKER_USERNAME }}/${{ matrix.image }}
           tags: |
             type=schedule,pattern=nightly
             type=semver,pattern={{version}},enable=${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
@@ -63,6 +65,16 @@ jobs:
       #       echo "No tags generated, setting fallback tag"
       #       echo "::set-output name=tags::latest"
       #     fi
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: ${{ matrix.platforms }}
+          push: false
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
 
       - name: Log in to Registry
         env:
@@ -84,8 +96,7 @@ jobs:
           matrix.registry == 'ghcr'
         uses: docker/build-push-action@v5
         with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.file }}
+          context: "."
           platforms: ${{ matrix.platforms }}
           # Skip pushing when PR from a fork
           push: ${{ !github.event.pull_request.head.repo.fork }}
